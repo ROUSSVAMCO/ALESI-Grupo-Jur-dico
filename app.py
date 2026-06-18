@@ -719,9 +719,39 @@ def expediente(id):
         flash("No tienes acceso a este expediente.")
         return redirect("/")
     expediente = Expediente.query.get_or_404(id)
-    return render("""<div class="card"><h2>Expediente {{expediente.numero}} <button onclick="window.print()">Imprimir</button></h2><p><b>Cliente:</b> {{expediente.cliente.nombre if expediente.cliente else ""}}</p><p><b>Materia:</b> {{expediente.materia}}</p><p><b>Tipo de asunto:</b> {{expediente.tipo_asunto}}</p><p><b>Autoridad:</b> {{expediente.autoridad}}</p><p><b>Actor:</b> {{expediente.actor}}</p><p><b>Demandado:</b> {{expediente.demandado}}</p><p><b>Estado:</b> {{expediente.estado}}</p>{% if puede_editar %}<form method="post" action="/actualizar-estatus/{{expediente.id}}"><label>Cambiar estatus</label><select name="estado"><option {% if expediente.estado == 'Nuevo' %}selected{% endif %}>Nuevo</option><option {% if expediente.estado == 'En trámite' %}selected{% endif %}>En trámite</option><option {% if expediente.estado == 'Pendiente de acuerdo' %}selected{% endif %}>Pendiente de acuerdo</option><option {% if expediente.estado == 'Pendiente de audiencia' %}selected{% endif %}>Pendiente de audiencia</option><option {% if expediente.estado == 'Concluido' %}selected{% endif %}>Concluido</option><option {% if expediente.estado == 'Archivado' %}selected{% endif %}>Archivado</option><option {% if expediente.estado == 'Urgente' %}selected{% endif %}>Urgente</option></select><button>Actualizar estatus</button></form>{% endif %}<p><b>Tu permiso:</b> <span class="badge">{{permiso}}</span></p><p>{{expediente.observaciones}}</p>{% if puede_editar %}<a class="btn" href="/movimiento/{{expediente.id}}">Agregar promoción/vencimiento</a> <a class="btn btn2" href="/audiencia/{{expediente.id}}">Programar audiencia</a> <a class="btn" href="/mensaje/{{expediente.id}}">Mensaje interno</a>{% endif %} {% if puede_administrar %}<a class="btn btnDark" href="/compartir/{{expediente.id}}">Compartir / Accesos</a>{% endif %} {% if puede_editar %}<a class="btn" href="/aviso-expediente/{{expediente.id}}">Agregar aviso</a>{% endif %}</div><div class="grid2"><div class="card"><h2>Promociones / vencimientos</h2><table><tr><th>Título</th><th>Usuario</th><th>Límite</th><th>Archivo</th></tr>{% for movimiento in movimientos %}<tr><td>{{movimiento.titulo}}</td><td>{{movimiento.usuario.nombre}}</td><td>{{movimiento.fecha_limite}} {{movimiento.hora_limite}}</td><td>{% if movimiento.archivo_url %}<a href="{{movimiento.archivo_url}}" target="_blank">Ver</a>{% endif %}</td></tr>{% endfor %}</table></div><div class="card"><h2>Audiencias</h2><table><tr><th>Fecha</th><th>Hora</th><th>Audiencia</th><th>Usuario</th></tr>{% for audiencia in audiencias %}<tr><td>{{audiencia.fecha}}</td><td>{{audiencia.hora}}</td><td>{{audiencia.titulo}}</td><td>{{audiencia.usuario.nombre}}</td></tr>{% endfor %}</table></div></div><div class="grid2"><div class="card"><h2>Chat interno</h2>{% for m in mensajes %}<div class="chat"><b>{{m.usuario.nombre}}</b><div class="small">{{m.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{m.mensaje}}</p></div>{% endfor %}</div><div class="card"><h2>Avisos del expediente</h2>{% for av in avisos_exp %}<div class="chat"><b>{{av.titulo}}</b> - {{av.creado_en.strftime('%d/%m/%Y %H:%M')}}<br>{{av.mensaje}}</div>{% endfor %}</div></div><div class="card"><h2>Bitácora</h2>{% for b in bitacora %}<div class="bit"><b>{{b.accion}}</b><div class="small">{{b.usuario.nombre if b.usuario else ""}} | {{b.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{b.detalle}}</p></div>{% endfor %}</div>""", expediente=expediente, permiso=permiso_expediente(id), puede_editar=puede_editar(id), puede_administrar=puede_administrar(id), movimientos=Movimiento.query.filter_by(expediente_id=id).order_by(Movimiento.id.desc()).all(), audiencias=Audiencia.query.filter_by(expediente_id=id).order_by(Audiencia.fecha, Audiencia.hora).all(), mensajes=MensajeExpediente.query.filter_by(expediente_id=id).order_by(MensajeExpediente.id.desc()).all(), bitacora=Bitacora.query.filter_by(expediente_id=id).order_by(Bitacora.id.desc()).all(), avisos_exp=AvisoExpediente.query.filter_by(expediente_id=id).order_by(AvisoExpediente.id.desc()).all())
+    return render("""<div class="card"><h2>Expediente {{expediente.numero}}{% if puede_administrar %}
+<a class="btnDark"
+   href="/eliminar-expediente/{{expediente.id}}"
+   onclick="return confirm('¿Eliminar expediente completo?')">
+   Eliminar Expediente
+</a>
+{% endif %} <button onclick="window.print()">Imprimir</button></h2><p><b>Cliente:</b> {{expediente.cliente.nombre if expediente.cliente else ""}}</p><p><b>Materia:</b> {{expediente.materia}}</p><p><b>Tipo de asunto:</b> {{expediente.tipo_asunto}}</p><p><b>Autoridad:</b> {{expediente.autoridad}}</p><p><b>Actor:</b> {{expediente.actor}}</p><p><b>Demandado:</b> {{expediente.demandado}}</p><p><b>Estado:</b> {{expediente.estado}}</p>{% if puede_editar %}<form method="post" action="/actualizar-estatus/{{expediente.id}}"><label>Cambiar estatus</label><select name="estado"><option {% if expediente.estado == 'Nuevo' %}selected{% endif %}>Nuevo</option><option {% if expediente.estado == 'En trámite' %}selected{% endif %}>En trámite</option><option {% if expediente.estado == 'Pendiente de acuerdo' %}selected{% endif %}>Pendiente de acuerdo</option><option {% if expediente.estado == 'Pendiente de audiencia' %}selected{% endif %}>Pendiente de audiencia</option><option {% if expediente.estado == 'Concluido' %}selected{% endif %}>Concluido</option><option {% if expediente.estado == 'Archivado' %}selected{% endif %}>Archivado</option><option {% if expediente.estado == 'Urgente' %}selected{% endif %}>Urgente</option></select><button>Actualizar estatus</button></form>{% endif %}<p><b>Tu permiso:</b> <span class="badge">{{permiso}}</span></p><p>{{expediente.observaciones}}</p>{% if puede_editar %}<a class="btn" href="/movimiento/{{expediente.id}}">Agregar promoción/vencimiento</a> <a class="btn btn2" href="/audiencia/{{expediente.id}}">Programar audiencia</a> <a class="btn" href="/mensaje/{{expediente.id}}">Mensaje interno</a>{% endif %} {% if puede_administrar %}<a class="btn btnDark" href="/compartir/{{expediente.id}}">Compartir / Accesos</a>{% endif %} {% if puede_editar %}<a class="btn" href="/aviso-expediente/{{expediente.id}}">Agregar aviso</a>{% endif %}</div><div class="grid2"><div class="card"><h2>Promociones / vencimientos</h2><table><tr><th>Título</th><th>Usuario</th><th>Límite</th><th>Archivo</th></tr>{% for movimiento in movimientos %}<tr><td>{{movimiento.titulo}}</td><td>{{movimiento.usuario.nombre}}</td><td>{{movimiento.fecha_limite}} {{movimiento.hora_limite}}</td><td>{% if movimiento.archivo_url %}<a href="{{movimiento.archivo_url}}" target="_blank">Ver</a>{% endif %}</td></tr>{% endfor %}</table></div><div class="card"><h2>Audiencias</h2><table><tr><th>Fecha</th><th>Hora</th><th>Audiencia</th><th>Usuario</th></tr>{% for audiencia in audiencias %}<tr><td>{{audiencia.fecha}}</td><td>{{audiencia.hora}}</td><td>{{audiencia.titulo}}</td><td>{{audiencia.usuario.nombre}}</td></tr>{% endfor %}</table></div></div><div class="grid2"><div class="card"><h2>Chat interno</h2>{% for m in mensajes %}<div class="chat"><b>{{m.usuario.nombre}}</b><div class="small">{{m.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{m.mensaje}}</p></div>{% endfor %}</div><div class="card"><h2>Avisos del expediente</h2>{% for av in avisos_exp %}<div class="chat"><b>{{av.titulo}}</b> - {{av.creado_en.strftime('%d/%m/%Y %H:%M')}}<br>{{av.mensaje}}</div>{% endfor %}</div></div><div class="card"><h2>Bitácora</h2>{% for b in bitacora %}<div class="bit"><b>{{b.accion}}</b><div class="small">{{b.usuario.nombre if b.usuario else ""}} | {{b.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{b.detalle}}</p></div>{% endfor %}</div>""", expediente=expediente, permiso=permiso_expediente(id), puede_editar=puede_editar(id), puede_administrar=puede_administrar(id), movimientos=Movimiento.query.filter_by(expediente_id=id).order_by(Movimiento.id.desc()).all(), audiencias=Audiencia.query.filter_by(expediente_id=id).order_by(Audiencia.fecha, Audiencia.hora).all(), mensajes=MensajeExpediente.query.filter_by(expediente_id=id).order_by(MensajeExpediente.id.desc()).all(), bitacora=Bitacora.query.filter_by(expediente_id=id).order_by(Bitacora.id.desc()).all(), avisos_exp=AvisoExpediente.query.filter_by(expediente_id=id).order_by(AvisoExpediente.id.desc()).all())
 
+@app.route("/eliminar-expediente/<int:id>")
+def eliminar_expediente(id):
+    if not req():
+        return redirect("/login")
 
+    expediente = Expediente.query.get_or_404(id)
+
+    if not (admin() or expediente.propietario_id == actual().id):
+        flash("No tienes permiso para eliminar este expediente.")
+        return redirect("/expediente/" + str(id))
+
+    Movimiento.query.filter_by(expediente_id=id).delete()
+    Audiencia.query.filter_by(expediente_id=id).delete()
+    MensajeExpediente.query.filter_by(expediente_id=id).delete()
+    AvisoExpediente.query.filter_by(expediente_id=id).delete()
+    Bitacora.query.filter_by(expediente_id=id).delete()
+    Compartido.query.filter_by(expediente_id=id).delete()
+    Cobranza.query.filter_by(expediente_id=id).delete()
+
+    db.session.delete(expediente)
+    db.session.commit()
+
+    flash("Expediente eliminado correctamente.")
+    return redirect("/expedientes")
+    
 @app.route("/actualizar-estatus/<int:id>", methods=["POST"])
 def actualizar_estatus(id):
     if not req():
@@ -759,7 +789,25 @@ def mensaje(expediente_id):
         return redirect("/expediente/" + str(expediente_id))
     return render("""<div class="card"><h2>Mensaje interno</h2><form method="post"><label>Mensaje</label><textarea name="mensaje" required></textarea><button>Enviar</button></form></div>""")
 
+@app.route("/eliminar-aviso/<int:id>")
+def eliminar_aviso(id):
+    if not req():
+        return redirect("/login")
 
+    aviso = AvisoExpediente.query.get_or_404(id)
+
+    if not (admin() or aviso.usuario_id == actual().id):
+        flash("No tienes permiso para eliminar este aviso.")
+        return redirect("/expediente/" + str(aviso.expediente_id))
+
+    expediente_id = aviso.expediente_id
+
+    db.session.delete(aviso)
+    db.session.commit()
+
+    flash("Aviso eliminado.")
+    return redirect("/expediente/" + str(expediente_id))
+    
 @app.route("/aviso-expediente/<int:expediente_id>", methods=["GET", "POST"])
 def aviso_expediente(expediente_id):
     if not req():
