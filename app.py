@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 from urllib.parse import quote_plus
 from io import BytesIO
+from openpyxl import Workbook
 
 from flask import Flask, render_template_string, request, redirect, flash, session, send_from_directory, Response, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -717,8 +718,38 @@ def expediente(id):
         flash("No tienes acceso a este expediente.")
         return redirect("/")
     expediente = Expediente.query.get_or_404(id)
-    return render("""<div class="card"><h2>Expediente {{expediente.numero}} <button onclick="window.print()">Imprimir</button></h2><p><b>Cliente:</b> {{expediente.cliente.nombre if expediente.cliente else ""}}</p><p><b>Materia:</b> {{expediente.materia}}</p><p><b>Tipo de asunto:</b> {{expediente.tipo_asunto}}</p><p><b>Autoridad:</b> {{expediente.autoridad}}</p><p><b>Actor:</b> {{expediente.actor}}</p><p><b>Demandado:</b> {{expediente.demandado}}</p><p><b>Estado:</b> {{expediente.estado}}</p><p><b>Tu permiso:</b> <span class="badge">{{permiso}}</span></p><p>{{expediente.observaciones}}</p>{% if puede_editar %}<a class="btn" href="/movimiento/{{expediente.id}}">Agregar promoción/vencimiento</a> <a class="btn btn2" href="/audiencia/{{expediente.id}}">Programar audiencia</a> <a class="btn" href="/mensaje/{{expediente.id}}">Mensaje interno</a>{% endif %} {% if puede_administrar %}<a class="btn btnDark" href="/compartir/{{expediente.id}}">Compartir / Accesos</a>{% endif %} {% if puede_editar %}<a class="btn" href="/aviso-expediente/{{expediente.id}}">Agregar aviso</a>{% endif %}</div><div class="grid2"><div class="card"><h2>Promociones / vencimientos</h2><table><tr><th>Título</th><th>Usuario</th><th>Límite</th><th>Archivo</th></tr>{% for movimiento in movimientos %}<tr><td>{{movimiento.titulo}}</td><td>{{movimiento.usuario.nombre}}</td><td>{{movimiento.fecha_limite}} {{movimiento.hora_limite}}</td><td>{% if movimiento.archivo_url %}<a href="{{movimiento.archivo_url}}" target="_blank">Ver</a>{% endif %}</td></tr>{% endfor %}</table></div><div class="card"><h2>Audiencias</h2><table><tr><th>Fecha</th><th>Hora</th><th>Audiencia</th><th>Usuario</th></tr>{% for audiencia in audiencias %}<tr><td>{{audiencia.fecha}}</td><td>{{audiencia.hora}}</td><td>{{audiencia.titulo}}</td><td>{{audiencia.usuario.nombre}}</td></tr>{% endfor %}</table></div></div><div class="grid2"><div class="card"><h2>Chat interno</h2>{% for m in mensajes %}<div class="chat"><b>{{m.usuario.nombre}}</b><div class="small">{{m.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{m.mensaje}}</p></div>{% endfor %}</div><div class="card"><h2>Avisos del expediente</h2>{% for av in avisos_exp %}<div class="chat"><b>{{av.titulo}}</b> - {{av.creado_en.strftime('%d/%m/%Y %H:%M')}}<br>{{av.mensaje}}</div>{% endfor %}</div></div><div class="card"><h2>Bitácora</h2>{% for b in bitacora %}<div class="bit"><b>{{b.accion}}</b><div class="small">{{b.usuario.nombre if b.usuario else ""}} | {{b.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{b.detalle}}</p></div>{% endfor %}</div>""", expediente=expediente, permiso=permiso_expediente(id), puede_editar=puede_editar(id), puede_administrar=puede_administrar(id), movimientos=Movimiento.query.filter_by(expediente_id=id).order_by(Movimiento.id.desc()).all(), audiencias=Audiencia.query.filter_by(expediente_id=id).order_by(Audiencia.fecha, Audiencia.hora).all(), mensajes=MensajeExpediente.query.filter_by(expediente_id=id).order_by(MensajeExpediente.id.desc()).all(), bitacora=Bitacora.query.filter_by(expediente_id=id).order_by(Bitacora.id.desc()).all(), avisos_exp=AvisoExpediente.query.filter_by(expediente_id=id).order_by(AvisoExpediente.id.desc()).all())
+    return render("""<div class="card"><h2>Expediente {{expediente.numero}} <button onclick="window.print()">Imprimir</button></h2><p><b>Cliente:</b> {{expediente.cliente.nombre if expediente.cliente else ""}}</p><p><b>Materia:</b> {{expediente.materia}}</p><p><b>Tipo de asunto:</b> {{expediente.tipo_asunto}}</p><p><b>Autoridad:</b> {{expediente.autoridad}}</p><p><b>Actor:</b> {{expediente.actor}}</p><p><b>Demandado:</b> {{expediente.demandado}}</p><select name="estado">
+        <option>Nuevo</option>
+        <option>En trámite</option>
+        <option>Pendiente de acuerdo</option>
+        <option>Pendiente de audiencia</option>
+        <option>Concluido</option>
+        <option>Archivado</option>
+        <option>Urgente</option>
+    </select>
+    <button>Actualizar estatus</button>
+</form>
+{% endif %}<p><b>Tu permiso:</b> <span class="badge">{{permiso}}</span></p><p>{{expediente.observaciones}}</p>{% if puede_editar %}<a class="btn" href="/movimiento/{{expediente.id}}">Agregar promoción/vencimiento</a> <a class="btn btn2" href="/audiencia/{{expediente.id}}">Programar audiencia</a> <a class="btn" href="/mensaje/{{expediente.id}}">Mensaje interno</a>{% endif %} {% if puede_administrar %}<a class="btn btnDark" href="/compartir/{{expediente.id}}">Compartir / Accesos</a>{% endif %} {% if puede_editar %}<a class="btn" href="/aviso-expediente/{{expediente.id}}">Agregar aviso</a>{% endif %}</div><div class="grid2"><div class="card"><h2>Promociones / vencimientos</h2><table><tr><th>Título</th><th>Usuario</th><th>Límite</th><th>Archivo</th></tr>{% for movimiento in movimientos %}<tr><td>{{movimiento.titulo}}</td><td>{{movimiento.usuario.nombre}}</td><td>{{movimiento.fecha_limite}} {{movimiento.hora_limite}}</td><td>{% if movimiento.archivo_url %}<a href="{{movimiento.archivo_url}}" target="_blank">Ver</a>{% endif %}</td></tr>{% endfor %}</table></div><div class="card"><h2>Audiencias</h2><table><tr><th>Fecha</th><th>Hora</th><th>Audiencia</th><th>Usuario</th></tr>{% for audiencia in audiencias %}<tr><td>{{audiencia.fecha}}</td><td>{{audiencia.hora}}</td><td>{{audiencia.titulo}}</td><td>{{audiencia.usuario.nombre}}</td></tr>{% endfor %}</table></div></div><div class="grid2"><div class="card"><h2>Chat interno</h2>{% for m in mensajes %}<div class="chat"><b>{{m.usuario.nombre}}</b><div class="small">{{m.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{m.mensaje}}</p></div>{% endfor %}</div><div class="card"><h2>Avisos del expediente</h2>{% for av in avisos_exp %}<div class="chat"><b>{{av.titulo}}</b> - {{av.creado_en.strftime('%d/%m/%Y %H:%M')}}<br>{{av.mensaje}}</div>{% endfor %}</div></div><div class="card"><h2>Bitácora</h2>{% for b in bitacora %}<div class="bit"><b>{{b.accion}}</b><div class="small">{{b.usuario.nombre if b.usuario else ""}} | {{b.creado_en.strftime("%d/%m/%Y %H:%M")}}</div><p>{{b.detalle}}</p></div>{% endfor %}</div>""", expediente=expediente, permiso=permiso_expediente(id), puede_editar=puede_editar(id), puede_administrar=puede_administrar(id), movimientos=Movimiento.query.filter_by(expediente_id=id).order_by(Movimiento.id.desc()).all(), audiencias=Audiencia.query.filter_by(expediente_id=id).order_by(Audiencia.fecha, Audiencia.hora).all(), mensajes=MensajeExpediente.query.filter_by(expediente_id=id).order_by(MensajeExpediente.id.desc()).all(), bitacora=Bitacora.query.filter_by(expediente_id=id).order_by(Bitacora.id.desc()).all(), avisos_exp=AvisoExpediente.query.filter_by(expediente_id=id).order_by(AvisoExpediente.id.desc()).all())
 
+@app.route("/actualizar-estatus/<int:id>", methods=["POST"])
+def actualizar_estatus(id):
+    if not req():
+        return redirect("/login")
+
+    if not puede_editar(id):
+        flash("No tienes permiso para cambiar el estatus.")
+        return redirect("/expediente/" + str(id))
+
+    expediente = Expediente.query.get_or_404(id)
+    nuevo_estatus = request.form["estado"]
+
+    expediente.estado = nuevo_estatus
+    registrar_bitacora(id, "Cambió estatus", f"Nuevo estatus: {nuevo_estatus}")
+    crear_aviso_para_accesos(id, "Estatus actualizado", f"El expediente {expediente.numero} cambió a: {nuevo_estatus}")
+
+    db.session.commit()
+    flash("Estatus actualizado.")
+    return redirect("/expediente/" + str(id))
 
 @app.route("/mensaje/<int:expediente_id>", methods=["GET", "POST"])
 def mensaje(expediente_id):
