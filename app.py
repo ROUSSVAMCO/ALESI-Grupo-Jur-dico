@@ -363,6 +363,7 @@ def ensure_schema_updates():
     add_column("expediente", "abono_pactado", "FLOAT DEFAULT 0")
     add_column("expediente", "periodicidad_abono", "VARCHAR(80) DEFAULT ''")
     add_column("cobranza", "folio", "VARCHAR(40)")
+    add_column("apariencia", "logo_url", "TEXT")
     db.session.commit()
 
 
